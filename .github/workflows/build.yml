@@ -36,7 +36,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # wasm-bindgen and wasm-opt, which Trunk downloads on first build
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/trunk
           key: trunk-tools-${{ env.TRUNK_VERSION }}-${{ hashFiles('Cargo.lock') }}
