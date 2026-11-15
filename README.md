@@ -21,7 +21,7 @@ Camera access needs a secure context: `localhost` is fine for development, and a
 
 ## Deploy
 
-Hosted on Firebase Hosting (project `photo-booth-41`, https://photo-booth-41.web.app).
+Hosted on Firebase Hosting as the `photo-booth-41` site (https://photo-booth-41.web.app) in the `personal-website-2d952` Firebase project.
 
 - **Pull requests** run the same checks as `make build` and, once the deploy secret exists, publish a preview channel that expires after 7 days. The link is posted on the PR.
 - **Pushes to `main`** run the checks again and deploy to the live site.

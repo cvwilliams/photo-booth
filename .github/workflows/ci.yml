@@ -45,5 +45,5 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PHOTO_BOOTH_41 }}
-          projectId: photo-booth-41
+          projectId: personal-website-2d952
           expires: 7d

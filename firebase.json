@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "photo-booth-41",
     "public": "dist",
     "ignore": [
       "firebase.json",
