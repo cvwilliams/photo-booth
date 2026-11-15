@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+    groups:
+      leptos:
+        patterns: ['leptos*']
+      wasm-bindgen:
+        patterns: ['wasm-bindgen*', 'js-sys', 'web-sys']
+      minor-and-patch:
+        patterns: ['*']
+        exclude-patterns: ['leptos*', 'wasm-bindgen*', 'js-sys', 'web-sys']
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: docker

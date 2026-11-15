@@ -19,6 +19,15 @@ The first run builds the toolchain image and fills the cargo and target cache vo
 
 Camera access needs a secure context: `localhost` is fine for development, and a deployed site must be served over HTTPS.
 
+## Deploy
+
+Hosted on Firebase Hosting as the `photo-booth-41` site (https://photo-booth-41.web.app) in the `personal-website-2d952` Firebase project.
+
+- **Pull requests** run the same checks as `make build` and, once the deploy secret exists, publish a preview channel that expires after 7 days. The link is posted on the PR.
+- **Pushes to `main`** run the checks again and deploy to the live site.
+
+Deploys authenticate with a Firebase service account stored in the repo's `FIREBASE_SERVICE_ACCOUNT_PHOTO_BOOTH_41` Actions secret.
+
 ## Layout
 
 ```
@@ -37,3 +46,20 @@ Each animation frame, the mirrored video frame is drawn into an offscreen canvas
 ## Toolchain
 
 Everything runs in the `rust:1-trixie` image with the `wasm32-unknown-unknown` target and a prebuilt [Trunk](https://trunkrs.dev). Trunk downloads matching `wasm-bindgen` and `wasm-opt` binaries on first build and caches them in a volume.
+
+## Privacy
+
+Everything happens in your browser. The camera feed, filters, photos and the finished strip never leave your device: there is no backend, no analytics and no third-party requests (the font is bundled). The hosting serves the app with a `Permissions-Policy` that allows only the camera, and only for this site.
+
+## Browser support
+
+Recent Chrome, Edge, Firefox and Safari, on desktop and mobile. Camera access needs HTTPS (or `localhost`) and your permission.
+
+## Credits
+
+- [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by The Press Start 2P Project Authors, under the [SIL Open Font License 1.1](assets/fonts/OFL.txt).
+- Built with [Leptos](https://leptos.dev), [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) and [Trunk](https://trunkrs.dev).
+
+## License
+
+[MIT](LICENSE) © 2026 cvwilliams
