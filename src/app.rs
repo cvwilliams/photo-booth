@@ -5,7 +5,7 @@ use gloo_timers::future::TimeoutFuture;
 use leptos::{html, prelude::*, task::spawn_local};
 
 use crate::{
-    camera, export,
+    animation, camera, export,
     recorder::{self, Clip},
     renderer::{self, Renderer},
 };
@@ -14,6 +14,15 @@ use crate::{
 const SHOTS: usize = 4;
 /// Length of a video clip, in seconds. Keep in sync with `--clip` in style.css.
 const CLIP_SECONDS: u32 = 6;
+/// How long each photo shows in a photo GIF (hundredths of a second), so the
+/// four shots loop over 4 seconds.
+const PHOTO_GIF_DELAY_CS: u16 = 100;
+/// Frame rate of a video GIF. GIF delays are in hundredths of a second, so
+/// pick a rate that divides 100 evenly.
+const VIDEO_GIF_FPS: u32 = 10;
+/// Widest a GIF gets. Photo GIFs have only four frames, so they can be bigger.
+const PHOTO_GIF_WIDTH: u32 = 640;
+const VIDEO_GIF_WIDTH: u32 = 480;
 
 #[derive(Clone, Debug, PartialEq)]
 enum Phase {
@@ -30,26 +39,35 @@ enum Mode {
     Video,
 }
 
+/// What SNAP saves: the full-quality strip or video, or a looping GIF of it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+enum Format {
+    #[default]
+    HiFi,
+    Gif,
+}
+
 /// What the last SNAP produced.
 #[derive(Clone, Debug, PartialEq)]
 enum Take {
     /// PNG data URL of the photo strip.
     Strip(String),
     Clip(Clip),
+    Gif(Clip),
 }
 
 impl Take {
     fn url(&self) -> &str {
         match self {
             Take::Strip(url) => url,
-            Take::Clip(clip) => &clip.url,
+            Take::Clip(clip) | Take::Gif(clip) => &clip.url,
         }
     }
 
     fn file_name(&self) -> String {
         let ext = match self {
             Take::Strip(_) => "png",
-            Take::Clip(clip) => clip.ext,
+            Take::Clip(clip) | Take::Gif(clip) => clip.ext,
         };
         format!("photo-booth-{}.{ext}", js_sys::Date::now() as u64)
     }
@@ -70,6 +88,8 @@ pub fn App() -> impl IntoView {
 
     let (phase, set_phase) = signal(Phase::Idle);
     let (mode, set_mode) = signal(Mode::Photo);
+    let (format, set_format) = signal(Format::HiFi);
+    let (developing, set_developing) = signal(None::<u32>);
     let (filter, set_filter) = signal(Filter::None);
     let (countdown, set_countdown) = signal(None::<u32>);
     let (flash, set_flash) = signal(false);
@@ -84,11 +104,18 @@ pub fn App() -> impl IntoView {
     let slot = StoredValue::new_local(None::<Rc<RefCell<Renderer>>>);
     let is_live = move || phase.get() == Phase::Live;
     let is_video = move || mode.get() == Mode::Video;
+    let is_gif = move || format.get() == Format::Gif;
     let recording = move || rec_left.get().is_some();
+    // What a take is called on screen and in the marquee.
+    let take_name = move || match (mode.get(), format.get()) {
+        (_, Format::Gif) => "GIF",
+        (Mode::Photo, Format::HiFi) => "STRIP",
+        (Mode::Video, Format::HiFi) => "CLIP",
+    };
 
     // Drop the current result (freeing a clip's memory) and any message.
     let clear_take = move || {
-        if let Some(Take::Clip(clip)) = take.get_untracked() {
+        if let Some(Take::Clip(clip) | Take::Gif(clip)) = take.get_untracked() {
             recorder::release(&clip);
         }
         set_take.set(None);
@@ -129,9 +156,11 @@ pub fn App() -> impl IntoView {
         clear_take();
         set_shooting.set(true);
         let mode = mode.get_untracked();
+        let format = format.get_untracked();
+        let progress = move |pct: u32| set_developing.set(Some(pct));
         spawn_local(async move {
-            let result = match mode {
-                Mode::Photo => {
+            let result = match (mode, format) {
+                (Mode::Photo, _) => {
                     let mut frames = Vec::with_capacity(SHOTS);
                     for i in 0..SHOTS {
                         count_down(if i == 0 { 3 } else { 2 }, set_countdown).await;
@@ -144,9 +173,30 @@ pub fn App() -> impl IntoView {
                         set_flash.set(false);
                         TimeoutFuture::new(320).await;
                     }
-                    export::strip_data_url(&frames).map(Take::Strip)
+                    match format {
+                        Format::HiFi => export::strip_data_url(&frames).map(Take::Strip),
+                        Format::Gif => {
+                            let frames = frames
+                                .iter()
+                                .map(|f| animation::shrink(f, PHOTO_GIF_WIDTH))
+                                .collect();
+                            animation::encode(frames, PHOTO_GIF_DELAY_CS, progress)
+                                .await
+                                .map(Take::Gif)
+                        }
+                    }
                 }
-                Mode::Video => {
+                (Mode::Video, Format::Gif) => {
+                    count_down(3, set_countdown).await;
+                    let tick = move |left: u32| set_rec_left.set((left > 0).then_some(left));
+                    let frames =
+                        animation::capture(&r, CLIP_SECONDS, VIDEO_GIF_FPS, VIDEO_GIF_WIDTH, tick)
+                            .await;
+                    animation::encode(frames, (100 / VIDEO_GIF_FPS) as u16, progress)
+                        .await
+                        .map(Take::Gif)
+                }
+                (Mode::Video, Format::HiFi) => {
                     count_down(3, set_countdown).await;
                     match canvas_ref.get_untracked() {
                         Some(canvas) => {
@@ -161,6 +211,7 @@ pub fn App() -> impl IntoView {
                 }
             };
             set_rec_left.set(None);
+            set_developing.set(None);
             match result {
                 Ok(t) => set_take.set(Some(t)),
                 Err(e) => set_notice.set(Some(e)),
@@ -182,13 +233,27 @@ pub fn App() -> impl IntoView {
         });
     };
 
+    let toggle_format = move |_| {
+        if shooting.get_untracked() {
+            return;
+        }
+        clear_take();
+        set_format.update(|f| {
+            *f = match f {
+                Format::HiFi => Format::Gif,
+                Format::Gif => Format::HiFi,
+            }
+        });
+    };
+
     view! {
         <main class="arcade">
             <div class="cabinet">
                 <header class="marquee">
                     <h1>"PHOTO BOOTH"</h1>
                     <p>
-                        {move || if is_video() { "6 SECONDS · 1 CLIP" } else { "4 SHOTS · 1 STRIP" }}
+                        {move || if is_video() { "6 SECONDS · 1 " } else { "4 SHOTS · 1 " }}
+                        {take_name}
                         " · NOTHING LEAVES YOUR DEVICE"
                     </p>
                 </header>
@@ -209,7 +274,10 @@ pub fn App() -> impl IntoView {
                                             <em class="t-red">"● REC " {left} "S"</em>
                                         }.into_any(),
                                         (Mode::Video, None) => view! {
-                                            <em class="t-yellow">{format!("VIDEO {CLIP_SECONDS}S")}</em>
+                                            <em class="t-yellow">
+                                                {move || if is_gif() { "GIF " } else { "VIDEO " }}
+                                                {CLIP_SECONDS} "S"
+                                            </em>
                                         }.into_any(),
                                         (Mode::Photo, _) => view! {
                                             <em class="t-yellow">{move || format!("SHOTS {}/{SHOTS}", shots_taken.get())}</em>
@@ -267,6 +335,24 @@ pub fn App() -> impl IntoView {
                                     </p>
                                 </div>
                             }.into_any(),
+                            Take::Gif(gif) => view! {
+                                <div class="clip-view">
+                                    <img class="clip" src=gif.url alt="Your GIF" />
+                                    <p class="screen-prompt">
+                                        <em class="t-yellow">"GIF READY!"</em>" PRESS PRINT TO SAVE"
+                                    </p>
+                                </div>
+                            }.into_any(),
+                        })}
+
+                        {move || developing.get().map(|pct| view! {
+                            <div class="screen-msg developing">
+                                <p class="t-yellow blink">"DEVELOPING…"</p>
+                                <div class="dev-bar" aria-hidden="true">
+                                    <span style:width=format!("{pct}%")></span>
+                                </div>
+                                <p class="small" role="status">{pct} "%"</p>
+                            </div>
                         })}
 
                         {move || notice.get().map(|msg| view! {
@@ -304,22 +390,26 @@ pub fn App() -> impl IntoView {
                             <p class="fine">"AUTHORIZED SMILES ONLY"</p>
                         </div>
 
-                        <button
-                            class="toggle"
-                            class:down=is_video
-                            role="switch"
-                            aria-checked=move || is_video().to_string()
-                            aria-label="Video mode"
-                            disabled=move || shooting.get()
-                            on:click=toggle_mode
-                        >
-                            <span class="toggle-label" class:lit={move || !is_video()}><i></i>"PHOTO"</span>
-                            <span class="toggle-plate" aria-hidden="true">
-                                <span class="nut"></span>
-                                <span class="bat"></span>
-                            </span>
-                            <span class="toggle-label video" class:lit=is_video><i></i>"VIDEO"</span>
-                        </button>
+                        <div class="switches">
+                            <Switch
+                                name="Video mode"
+                                up="PHOTO"
+                                down="VIDEO"
+                                lamp="red"
+                                on=Signal::derive(is_video)
+                                disabled=shooting
+                                on_toggle=toggle_mode
+                            />
+                            <Switch
+                                name="GIF mode"
+                                up="HI-FI"
+                                down="GIF"
+                                lamp="cyan"
+                                on=Signal::derive(is_gif)
+                                disabled=shooting
+                                on_toggle=toggle_format
+                            />
+                        </div>
 
                         <div class="control">
                             <div class="ph sm white">
@@ -378,7 +468,12 @@ pub fn App() -> impl IntoView {
                                 <div class="ph lg red" class:on={move || shooting.get()} class:pulse={move || shooting.get()}>
                                     <button
                                         class="pl"
-                                        aria-label=move || if is_video() { "Record a 6-second video" } else { "Snap four photos" }
+                                        aria-label=move || match (is_video(), is_gif()) {
+                                            (true, false) => "Record a 6-second video",
+                                            (true, true) => "Record a 6-second GIF",
+                                            (false, false) => "Snap four photos",
+                                            (false, true) => "Snap four photos for a GIF",
+                                        }
                                         disabled={move || !is_live() || shooting.get()}
                                         on:click=snap
                                     ></button>
@@ -421,6 +516,39 @@ pub fn App() -> impl IntoView {
                 </div>
             </div>
         </main>
+    }
+}
+
+/// A chrome toggle switch on the service panel: the lever points up for the
+/// first setting and flips down for the second, whose lamp lights in `lamp`.
+#[component]
+fn Switch(
+    /// Accessible name; the switch is "on" when flipped down.
+    name: &'static str,
+    up: &'static str,
+    down: &'static str,
+    lamp: &'static str,
+    #[prop(into)] on: Signal<bool>,
+    #[prop(into)] disabled: Signal<bool>,
+    on_toggle: impl FnMut(leptos::ev::MouseEvent) + 'static,
+) -> impl IntoView {
+    view! {
+        <button
+            class="toggle"
+            class:down=on
+            role="switch"
+            aria-checked=move || on.get().to_string()
+            aria-label=name
+            disabled=disabled
+            on:click=on_toggle
+        >
+            <span class="toggle-label" class:lit=move || !on.get()><i></i>{up}</span>
+            <span class="toggle-plate" aria-hidden="true">
+                <span class="nut"></span>
+                <span class="bat"></span>
+            </span>
+            <span class=format!("toggle-label lamp-{lamp}") class:lit=on><i></i>{down}</span>
+        </button>
     }
 }
 

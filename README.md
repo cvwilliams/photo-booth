@@ -6,7 +6,8 @@ An arcade-cabinet photo booth that runs entirely in your browser, built with Rus
 
 - **Live filters:** the CRT screen shows your webcam with the selected filter applied every frame. Pick None, Mono, Sepia, Noir, Invert or Pop with the colour-coded plunger buttons.
 - **Photo strips:** press SNAP for a countdown and four photos, then PRINT to download them as a captioned PNG strip.
-- **Video mode:** unlock the keyhole to swing the control panel open, flip the switch inside, and REC records a 6-second clip of the filtered preview (MP4 where the browser supports it, otherwise WebM).
+- **Video mode:** unlock the keyhole to swing the control panel open, flip the PHOTO/VIDEO switch inside, and REC records a 6-second clip of the filtered preview (MP4 where the browser supports it, otherwise WebM).
+- **GIF mode:** flip the HI-FI/GIF switch to get a looping GIF instead, encoded in Rust right in the browser: the four photos at a second each, or the 6-second video at 10 fps.
 - **Private:** nothing leaves your device.
 
 ## Develop
@@ -33,13 +34,14 @@ Camera access needs a secure context: `localhost` works for development, and any
 ## How it works
 
 ```
-crates/booth-core/   pure Rust, no browser APIs: filters and strip layout on RGBA buffers (unit-tested)
+crates/booth-core/   pure Rust, no browser APIs: filters, strip layout and GIF encoding on RGBA buffers (unit-tested)
 src/
   app.rs             Leptos UI and the capture state machine
   camera.rs          getUserMedia
   renderer.rs        per-frame loop: video → offscreen canvas → Rust filter → visible canvas
   export.rs          compose the strip, draw the caption, encode PNG
   recorder.rs        record the preview canvas with MediaRecorder
+  animation.rs       grab preview frames and encode them as a GIF, yielding between frames
 style.css            cabinet, CRT and the plunger buttons (colours are CSS custom properties)
 assets/fonts/        Press Start 2P, bundled locally (OFL licence alongside)
 ```

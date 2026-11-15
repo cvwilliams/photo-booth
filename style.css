@@ -415,9 +415,24 @@ em { font-style: normal; }
   object-fit: cover;
 }
 
+/* ───── Developing a GIF ───── */
+.screen-msg.developing { background: rgb(0 0 0 / 0.72); }
+.dev-bar {
+  width: clamp(160px, 36vw, 320px);
+  height: 14px;
+  border: 2px solid #fff;
+  background: rgb(0 0 0 / 0.5);
+}
+.dev-bar span {
+  display: block;
+  height: 100%;
+  background: var(--yellow);
+  transition: width 120ms linear;
+}
+
 /* ───── Service door ─────
    The control panel is a door hinged on its left edge. Opening it swings it
-   out past the cabinet and shows the insides, where the mode switch lives. */
+   out past the cabinet and shows the insides, where the mode switches live. */
 .bay {
   position: relative;
   perspective: 2600px;
@@ -477,7 +492,7 @@ em { font-style: normal; }
 .keyhole:disabled { cursor: not-allowed; opacity: 0.5; }
 .keyhole:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
 
-/* Behind the door: a circuit board, a warning sticker and the switch. */
+/* Behind the door: a circuit board, a warning sticker and the switches. */
 .inside {
   position: absolute;
   inset: 0;
@@ -547,8 +562,15 @@ em { font-style: normal; }
 }
 .toggle-label.lit { color: var(--yellow); }
 .toggle-label.lit i { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
-.toggle-label.video.lit { color: #ff6b6b; }
-.toggle-label.video.lit i { background: #ff4d4d; box-shadow: 0 0 10px #ff4d4d; }
+.toggle-label.lamp-red.lit { color: #ff6b6b; }
+.toggle-label.lamp-red.lit i { background: #ff4d4d; box-shadow: 0 0 10px #ff4d4d; }
+.toggle-label.lamp-cyan.lit { color: var(--cyan); }
+.toggle-label.lamp-cyan.lit i { background: #22d3ee; box-shadow: 0 0 10px #22d3ee; }
+
+.switches {
+  display: flex;
+  gap: clamp(16px, 4vw, 40px);
+}
 
 .toggle-plate {
   position: relative;
@@ -585,7 +607,7 @@ em { font-style: normal; }
   box-shadow: 0 2px 4px rgb(0 0 0 / 0.5);
   z-index: 1; /* above the plate's screws */
 }
-/* The lever pivots on the nut: up = PHOTO, flipped down = VIDEO. */
+/* The lever pivots on the nut: up for the first setting, flipped down for the second. */
 .bat {
   position: absolute;
   left: 50%;

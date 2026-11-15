@@ -8,3 +8,4 @@ repository = "https://github.com/cvwilliams/photo-booth"
 publish = false
 
 [dependencies]
+gif = "0.14.2"

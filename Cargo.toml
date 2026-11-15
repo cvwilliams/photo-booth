@@ -46,6 +46,13 @@ opt-level = 1
 [profile.dev.package.booth-core]
 opt-level = 3
 
+# GIF encoding and colour quantization.
+[profile.dev.package.gif]
+opt-level = 3
+
+[profile.dev.package.color_quant]
+opt-level = 3
+
 [profile.release]
 opt-level = 3
 lto = true
