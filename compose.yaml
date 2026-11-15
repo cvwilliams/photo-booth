@@ -1,0 +1,41 @@
+name: photo-booth
+
+x-rust: &rust
+  build:
+    context: .
+    target: dev
+  image: photo-booth-dev
+  volumes:
+    - .:/app
+    - cargo_registry:/usr/local/cargo/registry
+    - cargo_git:/usr/local/cargo/git
+    - target:/app/target
+    - trunk_cache:/root/.cache/trunk
+
+services:
+  dev:
+    <<: *rust
+    ports:
+      - "8080:8080"
+
+  builder:
+    <<: *rust
+    profiles: [tools]
+    command: >
+      sh -c "cargo fmt --all --check
+      && cargo clippy --workspace --all-targets --target wasm32-unknown-unknown -- -D warnings
+      && cargo test -p booth-core
+      && trunk build --release"
+
+  preview:
+    <<: *rust
+    profiles: [tools]
+    ports:
+      - "8081:8080"
+    command: trunk serve --release --no-autoreload
+
+volumes:
+  cargo_registry:
+  cargo_git:
+  target:
+  trunk_cache:

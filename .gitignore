@@ -1,0 +1,8 @@
+# build output
+/target/
+/dist/
+
+# env / os
+.env
+.env.*
+.DS_Store

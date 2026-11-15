@@ -1,0 +1,43 @@
+[package]
+name = "photo-booth"
+version = "0.1.0"
+edition = "2024"
+description = "A Rust + Wasm photo booth SPA built with Leptos."
+license = "MIT"
+
+[workspace]
+members = [".", "crates/booth-core"]
+
+[dependencies]
+booth-core = { path = "crates/booth-core" }
+console_error_panic_hook = "0.1"
+gloo-timers = { version = "0.4", features = ["futures"] }
+js-sys = "0.3"
+leptos = { version = "0.8", features = ["csr"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "CanvasRenderingContext2d",
+    "Document",
+    "HtmlCanvasElement",
+    "HtmlVideoElement",
+    "ImageData",
+    "MediaDevices",
+    "MediaStream",
+    "MediaStreamConstraints",
+    "Navigator",
+    "Window",
+] }
+
+# Pixel loops run every frame for the live preview, so keep them fast even in
+# dev builds.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package.booth-core]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

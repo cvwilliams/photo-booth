@@ -1,0 +1,8 @@
+[package]
+name = "booth-core"
+version = "0.1.0"
+edition = "2024"
+description = "Pure-Rust image processing for the photo booth: filters and strip layout on RGBA buffers."
+license = "MIT"
+
+[dependencies]
