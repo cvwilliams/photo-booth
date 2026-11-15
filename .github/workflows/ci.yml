@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Skip without deploy secret
         if: env.HAS_DEPLOY_SECRET != 'true'
-        run: echo "::notice::FIREBASE_SERVICE_ACCOUNT_PHOTO_BOOTH_41 isn't set, so no preview was deployed. Run 'make deploy-setup' once to add it."
+        run: echo "::notice::FIREBASE_SERVICE_ACCOUNT_PHOTO_BOOTH_41 isn't set, so no preview was deployed. Add it in the repo's Actions secrets to enable previews."
 
       - uses: actions/checkout@v7
         if: env.HAS_DEPLOY_SECRET == 'true'

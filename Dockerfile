@@ -26,10 +26,3 @@ RUN cargo fmt --all --check \
  && cargo clippy --workspace --all-targets --target wasm32-unknown-unknown -- -D warnings \
  && cargo test -p booth-core \
  && trunk build --release
-
-FROM node:24-bookworm-slim AS firebase
-ENV NPM_CONFIG_UPDATE_NOTIFIER=false \
-    NPM_CONFIG_FUND=false
-RUN npm install -g firebase-tools
-WORKDIR /app
-ENTRYPOINT ["firebase"]

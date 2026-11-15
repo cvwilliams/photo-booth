@@ -13,7 +13,6 @@ make lint      # clippy (wasm target)
 make fmt       # format the code
 make shell     # a shell inside the toolchain container
 make clean     # remove containers, cache volumes and dist/
-make hosting-preview  # serve dist/ with the Firebase hosting emulator at http://localhost:5000
 ```
 
 The first run builds the toolchain image and fills the cargo and target cache volumes, so it takes a few minutes. Later runs are fast.
@@ -27,13 +26,7 @@ Hosted on Firebase Hosting (project `photo-booth-41`, https://photo-booth-41.web
 - **Pull requests** run the same checks as `make build` and, once the deploy secret exists, publish a preview channel that expires after 7 days. The link is posted on the PR.
 - **Pushes to `main`** run the checks again and deploy to the live site.
 
-One-time setup, which signs in to Firebase and adds the `FIREBASE_SERVICE_ACCOUNT_PHOTO_BOOTH_41` secret to the GitHub repo:
-
-```sh
-make deploy-setup
-```
-
-Decline the workflow files it offers to create; they already exist in `.github/workflows`. `make deploy` deploys a fresh build by hand if you ever need to.
+Deploys authenticate with a Firebase service account stored in the repo's `FIREBASE_SERVICE_ACCOUNT_PHOTO_BOOTH_41` Actions secret.
 
 ## Layout
 
