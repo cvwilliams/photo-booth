@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://photo-booth-41.web.app
+      url: https://photo-booth.cameronwillia.ms
     steps:
       - uses: actions/checkout@v7
 
