@@ -1,6 +1,6 @@
 # Photo Booth
 
-A photo booth that runs entirely in the browser, built with Rust, WebAssembly and [Leptos](https://leptos.dev). It's styled as an arcade cabinet: a CRT shows the live, filtered webcam preview, colour-coded plunger buttons pick the filter, and SNAP counts down, takes four photos and ejects a downloadable photo strip from the prize slot. Nothing leaves your device. Requires Docker.
+A photo booth that runs entirely in the browser, built with Rust, WebAssembly and [Leptos](https://leptos.dev). It's styled as an arcade cabinet: a CRT shows the live, filtered webcam preview, colour-coded plunger buttons pick the filter, and SNAP counts down and takes four photos for a downloadable photo strip. Unlock the keyhole on the control panel to swing it open and flip the switch inside to video mode, where REC records a 6-second clip of the filtered preview. Nothing leaves your device. Requires Docker.
 
 ## Develop
 
@@ -37,6 +37,7 @@ src/
   camera.rs          getUserMedia
   renderer.rs        per-frame loop: video → offscreen canvas → Rust filter → visible canvas
   export.rs          compose the strip, draw the caption, encode PNG
+  recorder.rs        record the preview canvas with MediaRecorder (MP4 where supported, else WebM)
 style.css            cabinet, CRT and the plunger buttons (colours are CSS custom properties)
 assets/fonts/        Press Start 2P, bundled locally so no request goes to a font CDN (OFL licence alongside)
 ```

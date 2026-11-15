@@ -1,6 +1,7 @@
 mod app;
 mod camera;
 mod export;
+mod recorder;
 mod renderer;
 
 fn main() {
