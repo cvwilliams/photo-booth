@@ -1,8 +1,17 @@
 # Photo Booth
 
-A photo booth that runs entirely in the browser, built with Rust, WebAssembly and [Leptos](https://leptos.dev). It's styled as an arcade cabinet: a CRT shows the live, filtered webcam preview, colour-coded plunger buttons pick the filter, and SNAP counts down and takes four photos for a downloadable photo strip. Unlock the keyhole on the control panel to swing it open and flip the switch inside to video mode, where REC records a 6-second clip of the filtered preview. Nothing leaves your device. Requires Docker.
+An arcade-cabinet photo booth that runs entirely in your browser, built with Rust, WebAssembly and [Leptos](https://leptos.dev).
+
+**Try it: [photo-booth.cameronwillia.ms](https://photo-booth.cameronwillia.ms)**
+
+- **Live filters:** the CRT screen shows your webcam with the selected filter applied every frame. Pick None, Mono, Sepia, Noir, Invert or Pop with the colour-coded plunger buttons.
+- **Photo strips:** press SNAP for a countdown and four photos, then PRINT to download them as a captioned PNG strip.
+- **Video mode:** unlock the keyhole to swing the control panel open, flip the switch inside, and REC records a 6-second clip of the filtered preview (MP4 where the browser supports it, otherwise WebM).
+- **Private:** nothing leaves your device.
 
 ## Develop
+
+The toolchain runs in Docker, so Docker and `make` are all you need.
 
 ```sh
 make dev       # dev server with live reload at http://localhost:8080
@@ -17,18 +26,11 @@ make clean     # remove containers, cache volumes and dist/
 
 The first run builds the toolchain image and fills the cargo and target cache volumes, so it takes a few minutes. Later runs are fast.
 
-Camera access needs a secure context: `localhost` is fine for development, and a deployed site must be served over HTTPS.
+The image is `rust:1-trixie` with the `wasm32-unknown-unknown` target and a prebuilt [Trunk](https://trunkrs.dev), which downloads matching `wasm-bindgen` and `wasm-opt` binaries on first build and caches them in a volume.
 
-## Deploy
+Camera access needs a secure context: `localhost` works for development, and anywhere else the app must be served over HTTPS.
 
-Hosted on Firebase Hosting as the `photo-booth-41` site (https://photo-booth-41.web.app) in the `personal-website-2d952` Firebase project.
-
-- **Pull requests** run the same checks as `make build` and, once the deploy secret exists, publish a preview channel that expires after 7 days. The link is posted on the PR.
-- **Pushes to `main`** run the checks again and deploy to the live site.
-
-Deploys authenticate with a Firebase service account stored in the repo's `FIREBASE_SERVICE_ACCOUNT_PHOTO_BOOTH_41` Actions secret.
-
-## Layout
+## How it works
 
 ```
 crates/booth-core/   pure Rust, no browser APIs: filters and strip layout on RGBA buffers (unit-tested)
@@ -37,24 +39,20 @@ src/
   camera.rs          getUserMedia
   renderer.rs        per-frame loop: video → offscreen canvas → Rust filter → visible canvas
   export.rs          compose the strip, draw the caption, encode PNG
-  recorder.rs        record the preview canvas with MediaRecorder (MP4 where supported, else WebM)
+  recorder.rs        record the preview canvas with MediaRecorder
 style.css            cabinet, CRT and the plunger buttons (colours are CSS custom properties)
-assets/fonts/        Press Start 2P, bundled locally so no request goes to a font CDN (OFL licence alongside)
+assets/fonts/        Press Start 2P, bundled locally (OFL licence alongside)
 ```
 
-Each animation frame, the mirrored video frame is drawn into an offscreen canvas. The pixels are read back, the selected filter is applied in Rust, and the result is painted to the visible canvas. Captures take the most recent filtered frame, so photos match the preview exactly.
-
-## Toolchain
-
-Everything runs in the `rust:1-trixie` image with the `wasm32-unknown-unknown` target and a prebuilt [Trunk](https://trunkrs.dev). Trunk downloads matching `wasm-bindgen` and `wasm-opt` binaries on first build and caches them in a volume.
+Each animation frame, the mirrored video frame is drawn into an offscreen canvas. The pixels are read back, the selected filter is applied in Rust, and the result is painted to the visible canvas. Photos take the most recent filtered frame and videos record that canvas, so what you capture matches the preview exactly.
 
 ## Privacy
 
-Everything happens in your browser. The camera feed, filters, photos and the finished strip never leave your device: there is no backend, no analytics and no third-party requests (the font is bundled). The hosting serves the app with a `Permissions-Policy` that allows only the camera, and only for this site.
+The camera feed, photos and videos never leave your device. There's no backend, no analytics and no third-party requests (even the font is bundled). The site is served with a `Permissions-Policy` that allows only the camera, and only for this site.
 
 ## Browser support
 
-Recent Chrome, Edge, Firefox and Safari, on desktop and mobile. Camera access needs HTTPS (or `localhost`) and your permission.
+Recent Chrome, Edge, Firefox and Safari, on desktop and mobile. You'll be asked for camera permission on first use.
 
 ## Credits
 
