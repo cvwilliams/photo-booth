@@ -1,0 +1,54 @@
+name: Build
+
+# Shared by CI (pull requests) and Deploy (main): the same checks as
+# `make build`, run on the runner's native toolchain so caches stay warm.
+# Third-party actions are pinned to commit SHAs; Dependabot keeps them current.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  TRUNK_VERSION: 0.22.1 # keep in sync with the Dockerfile
+
+jobs:
+  build:
+    name: Check, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+
+      - name: Install Trunk
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/trunk-x86_64-unknown-linux-musl.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" trunk
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # wasm-bindgen and wasm-opt, which Trunk downloads on first build
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/trunk
+          key: trunk-tools-${{ env.TRUNK_VERSION }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: trunk-tools-${{ env.TRUNK_VERSION }}-
+
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --target wasm32-unknown-unknown -- -D warnings
+      - run: cargo test -p booth-core
+      - run: trunk build --release
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          retention-days: 3

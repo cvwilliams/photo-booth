@@ -2,6 +2,10 @@
 /target/
 /dist/
 
+# firebase
+.firebase/
+firebase-debug.log*
+
 # env / os
 .env
 .env.*

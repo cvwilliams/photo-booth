@@ -34,8 +34,19 @@ services:
       - "8081:8080"
     command: trunk serve --release --no-autoreload
 
+  firebase:
+    profiles: [tools]
+    build:
+      context: .
+      target: firebase
+    image: photo-booth-firebase
+    volumes:
+      - .:/app
+      - firebase_config:/root/.config
+
 volumes:
   cargo_registry:
   cargo_git:
   target:
   trunk_cache:
+  firebase_config:
